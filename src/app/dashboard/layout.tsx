@@ -18,7 +18,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return <div className="flex min-h-screen bg-[#070a12] text-white">
     <Sidebar isAdmin={profile?.role === "admin"} />
     <div className="min-w-0 flex-1">
-      <Topnav name={profile?.name ?? user.email ?? "User"} plan={profile?.role === "admin" ? "admin" : subscription?.plan ?? "free"} creditsRemaining={profile?.role === "admin" ? Infinity : subscription?.credits_remaining ?? 0} />
+      <Topnav name={profile?.name ?? user.email ?? "User"} email={user.email ?? ""} plan={profile?.role === "admin" ? "admin" : subscription?.plan ?? "free"} creditsRemaining={profile?.role === "admin" ? Infinity : subscription?.credits_remaining ?? 0} />
       <main className="mx-auto w-full max-w-[1600px] p-5 lg:p-7">{children}</main>
     </div>
   </div>;
