@@ -17,6 +17,7 @@ import { ExportBar } from "@/components/generator/ExportBar";
 import { AIEditBar } from "@/components/generator/AIEditBar";
 import { ThemeChangeBar } from "@/components/generator/ThemeChangeBar";
 import dynamic from "next/dynamic";
+import { saveAndCheckpoint } from "@/lib/save-checkpoint";
 import { deriveSections, resolvePages, type Page } from "@/lib/preview";
 import type { FollowUpAnswers } from "@/lib/gemini";
 
@@ -132,12 +133,13 @@ export function GeneratorFlow({ initialProject }: { initialProject?: InitialProj
     if (!projectId) return;
     setSaveStatus("saving");
     try {
-      const response = await fetch("/api/projects/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, files, pages: resolvedPages }),
-      });
-      if (!response.ok) throw new Error("save failed");
+      // /api/projects/save used to update the current version row IN PLACE
+      // and nothing ever created a new, restorable version entry — a real,
+      // working checkpoint endpoint existed but was never called from
+      // anywhere in the frontend. saveAndCheckpoint fixes that: it saves,
+      // then snapshots the saved state into real version history.
+      const result = await saveAndCheckpoint(projectId, files, resolvedPages);
+      if (!result.saved) throw new Error("save failed");
       setSaveStatus("saved");
       toast.show("success", "All changes saved.");
     } catch { setSaveStatus("idle"); toast.show("error", "Couldn't save your edits — check your connection."); }
