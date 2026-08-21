@@ -36,3 +36,20 @@ export async function sendPaymentFailedEmail(to: string, name: string) {
            <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing">Update billing</a></p>`,
   });
 }
+/** A security-notification-style email sent on every real sign-in — both
+ * the email/password path (login/page.tsx) and the Google OAuth path
+ * (auth/callback/route.ts). Deliberately not wired into every code exchange
+ * that route handles (it also completes email verification and password
+ * reset links, not just logins) — sending "you just logged in" after
+ * someone verifies their email would be misleading. Callers decide when a
+ * genuine login actually happened; this function only sends. */
+export async function sendLoginNotificationEmail(to: string, name: string) {
+  await getResendClient().emails.send({
+    from: process.env.EMAIL_FROM!,
+    to,
+    subject: "New sign-in to your webma account",
+    html: `<p>Hi ${name || "there"},</p>
+           <p>Your webma account was just signed into. If this was you, no action is needed.</p>
+           <p>If you don't recognize this, secure your account by resetting your password.</p>`,
+  });
+}
