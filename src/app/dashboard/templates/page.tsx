@@ -1,43 +1,58 @@
-import Image from "next/image";
+import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/server";
+import { isTemplateLocked } from "@/lib/templates";
+import { TemplateCard } from "@/components/dashboard/TemplateCard";
 
-<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-  {templates?.map((template) => (
-    <div
-      key={template.id}
-      className="overflow-hidden rounded-2xl border border-white/10 bg-[#111827]"
-    >
-      <div className="relative h-52">
-        <Image
-          src={template.thumbnail}
-          alt={template.name}
-          fill
-          className="object-cover"
-        />
-      </div>
+export default async function TemplatesPage() {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-      <div className="p-4">
-        <h3 className="text-lg font-semibold text-white">
-          {template.name}
-        </h3>
+  const admin = createServiceRoleClient();
+  // thumbnail and structure both already existed as real columns — the
+  // previous query simply never selected either, which is the entire
+  // reason templates rendered with no preview image and did nothing when
+  // clicked. structure is what /api/templates/use turns into an actual
+  // new project.
+  const [{ data: templates }, { data: profile }, { data: sub }] = await Promise.all([
+    admin.from("templates").select("id, category, name, tier_required, thumbnail").order("category"),
+    admin.from("users").select("role").eq("id", user!.id).single(),
+    admin.from("subscriptions").select("plan").eq("user_id", user!.id).single(),
+  ]);
 
-        <p className="text-sm text-white/50">
-          {template.category}
-        </p>
+  const isAdmin = profile?.role === "admin";
+  const userPlan = sub?.plan ?? "free";
 
-        <p className="mt-2 text-xs text-violet-400">
-          {template.tier_required} plan
-        </p>
+  const grouped = (templates ?? []).reduce<Record<string, typeof templates>>((acc, t) => {
+    (acc[t.category] ??= []).push(t);
+    return acc;
+  }, {});
 
-        <div className="mt-4 flex gap-2">
-          <button className="rounded-lg bg-violet px-4 py-2 text-sm text-white">
-            Use Template
-          </button>
+  return (
+    <div>
+      <h1 className="font-display text-2xl font-bold">Templates</h1>
+      <p className="mt-1 text-sm text-ink/50">Locked templates unlock as you upgrade your plan.</p>
 
-          <button className="rounded-lg border border-white/10 px-4 py-2 text-sm text-white">
-            Preview
-          </button>
-        </div>
+      <div className="mt-8 space-y-10">
+        {Object.entries(grouped).map(([category, items]) => (
+          <div key={category}>
+            <h2 className="mb-3 font-display font-bold">{category}</h2>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              {items!.map((t) => (
+                <TemplateCard
+                  key={t.id}
+                  id={t.id}
+                  name={t.name}
+                  tierRequired={t.tier_required}
+                  thumbnail={t.thumbnail}
+                  locked={isTemplateLocked(t.tier_required, userPlan, isAdmin)}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
-  ))}
-</div>
+  );
+}
