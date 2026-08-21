@@ -25,6 +25,10 @@ export default function LoginPage() {
       setError(error.message);
       return;
     }
+    // Fire-and-forget — never blocks the redirect, and a failure here
+    // (a missing RESEND_API_KEY, a transient Resend outage) shouldn't turn
+    // into a broken sign-in experience for something this secondary.
+    fetch("/api/account/notify-login", { method: "POST" }).catch(() => {});
     router.push("/dashboard");
     router.refresh();
   }
