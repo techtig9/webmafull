@@ -45,9 +45,22 @@ export default function BillingPage() {
         return;
       }
       // @ts-expect-error Paddle is attached to window by the script below
-      window.Paddle?.Initialize?.({ token: data.clientToken });
-      // @ts-expect-error same as above
-      window.Paddle?.Checkout.open({
+      const paddle = window.Paddle;
+      // Previously used optional chaining here (window.Paddle?.Initialize?.(...)),
+      // which meant that if paddle.js hadn't finished loading yet — a real,
+      // plausible race even with strategy="afterInteractive", since that
+      // only guarantees the script starts loading after hydration, not that
+      // it's finished by the time someone clicks Subscribe — this entire
+      // block would silently do nothing. The checkout call above already
+      // succeeded, credits/plan state may already reflect it server-side,
+      // but no checkout UI would ever appear and nothing would tell the
+      // person why. This is that missing feedback.
+      if (!paddle) {
+        toast.show("error", "Checkout is still loading — wait a moment and try again.");
+        return;
+      }
+      paddle.Initialize?.({ token: data.clientToken });
+      paddle.Checkout.open({
         items: [{ priceId: data.priceId, quantity: 1 }],
         customer: { id: data.customerId },
       });
