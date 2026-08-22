@@ -1,4 +1,7 @@
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import {
+  createClient,
+  createServiceRoleClient,
+} from "@/lib/supabase/server";
 import { isTemplateLocked } from "@/lib/templates";
 import { TemplateCard } from "@/components/dashboard/TemplateCard";
 
@@ -15,22 +18,28 @@ export default async function TemplatesContent() {
 
   const admin = createServiceRoleClient();
 
-  const { data: templates } = await admin
-    .from("templates")
-    .select("id, category, name, tier_required, thumbnail")
-    .order("category");
+  const [
+    { data: templates },
+    { data: profile },
+    { data: subscription },
+  ] = await Promise.all([
+    admin
+      .from("templates")
+      .select("id, category, name, tier_required, thumbnail")
+      .order("category"),
 
-  const { data: profile } = await admin
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+    admin
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .single(),
 
-  const { data: subscription } = await admin
-    .from("subscriptions")
-    .select("plan")
-    .eq("user_id", user.id)
-    .single();
+    admin
+      .from("subscriptions")
+      .select("plan")
+      .eq("user_id", user.id)
+      .single(),
+  ]);
 
   const isAdmin = profile?.role === "admin";
   const userPlan = subscription?.plan ?? "free";
